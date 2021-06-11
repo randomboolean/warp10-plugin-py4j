@@ -1,5 +1,5 @@
 //
-//   Copyright 2018  SenX S.A.S.
+//   Copyright 2021  SenX S.A.S.
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -24,10 +24,9 @@ import javax.net.ServerSocketFactory;
 
 import io.warp10.Py4JEntryPoint;
 import io.warp10.warp.sdk.AbstractWarp10Plugin;
+import py4j.CallbackClient;
 import py4j.GatewayServer;
 import py4j.Py4JGatewayServer;
-import py4j.GatewayServer.GatewayServerBuilder;
-import py4j.Py4JPythonClient;
 
 public class Py4JWarp10Plugin extends AbstractWarp10Plugin {
     
@@ -38,9 +37,8 @@ public class Py4JWarp10Plugin extends AbstractWarp10Plugin {
   public static final String CONFIG_PY4J_PYTHON_HOST = "py4j.python.host";
   public static final String CONFIG_PY4J_TIMEOUT_READ = "py4j.timeout.read";
   public static final String CONFIG_PY4J_TIMEOUT_CONNECT = "py4j.timeout.connect";
-  public static final String CONFIG_PY4J_STACK_NOLIMITS = "py4j.stack.nolimits";
-  public static final String CONFIG_PY4J_WARPSCRIPT_PYTHON = "py4j.warpscript.python";
-  
+  public static final String CONFIG_PY4J_ALLOW_CALLBACKS = "py4j.allow.callbacks";
+
   @Override
   public void init(Properties props) {
     
@@ -51,15 +49,18 @@ public class Py4JWarp10Plugin extends AbstractWarp10Plugin {
     int connectTimeout = Integer.parseInt(props.getProperty(CONFIG_PY4J_TIMEOUT_CONNECT, Integer.toString(GatewayServer.DEFAULT_CONNECT_TIMEOUT)));
     int pyport = Integer.parseInt(props.getProperty(CONFIG_PY4J_PYTHON_PORT, Integer.toString(GatewayServer.DEFAULT_PYTHON_PORT)));
     String authToken = props.getProperty(CONFIG_PY4J_AUTHTOKEN);
+
     try {
       InetAddress addr = InetAddress.getByName(host);      
       InetAddress pyaddr = InetAddress.getByName(pyhost);
-     
-      Py4JPythonClient cb = null; // new CallbackClient(pyport, pyaddr);
-      
-      //if (!"true".equals(props.getProperty(CONFIG_PY4J_WARPSCRIPT_PYTHON))) {
+
+      py4j.Py4JPythonClient cb;
+      if (!"true".equals(props.getProperty(CONFIG_PY4J_ALLOW_CALLBACKS))) {
         cb = new io.warp10.plugins.py4j.Py4JPythonClient();
-      //}
+      } else {
+        cb = new CallbackClient(pyport, pyaddr);
+      }
+
       GatewayServer gateway = new Py4JGatewayServer(new Py4JEntryPoint(), port, addr, connectTimeout, readTimeout, null, cb, ServerSocketFactory.getDefault(), authToken);
       gateway.start();      
     } catch (UnknownHostException uhe) {
