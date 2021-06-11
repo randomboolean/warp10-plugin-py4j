@@ -17,12 +17,13 @@
 package io.warp10.plugins.py4j;
 
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.Properties;
 
 import javax.net.ServerSocketFactory;
 
 import io.warp10.Py4JEntryPoint;
+import io.warp10.ext.py4j.PythonCallExtension;
+import io.warp10.script.WarpScriptLib;
 import io.warp10.warp.sdk.AbstractWarp10Plugin;
 import py4j.CallbackClient;
 import py4j.GatewayServer;
@@ -38,6 +39,15 @@ public class Py4JWarp10Plugin extends AbstractWarp10Plugin {
   public static final String CONFIG_PY4J_TIMEOUT_READ = "py4j.timeout.read";
   public static final String CONFIG_PY4J_TIMEOUT_CONNECT = "py4j.timeout.connect";
   public static final String CONFIG_PY4J_ALLOW_CALLBACKS = "py4j.allow.callbacks";
+
+  public interface CallbackExecutor {
+    public String execute(String s);
+  }
+
+  private static GatewayServer gateway = null;
+  public static GatewayServer getGatewayServer() {
+    return gateway;
+  }
 
   @Override
   public void init(Properties props) {
@@ -59,12 +69,14 @@ public class Py4JWarp10Plugin extends AbstractWarp10Plugin {
         cb = new io.warp10.plugins.py4j.Py4JPythonClient();
       } else {
         cb = new CallbackClient(pyport, pyaddr);
+        WarpScriptLib.register(PythonCallExtension.class.newInstance());
       }
 
-      GatewayServer gateway = new Py4JGatewayServer(new Py4JEntryPoint(), port, addr, connectTimeout, readTimeout, null, cb, ServerSocketFactory.getDefault(), authToken);
-      gateway.start();      
-    } catch (UnknownHostException uhe) {
-      throw new RuntimeException(uhe);
+      gateway = new Py4JGatewayServer(new Py4JEntryPoint(), port, addr, connectTimeout, readTimeout, null, cb, ServerSocketFactory.getDefault(), authToken);
+      gateway.start();
+
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
   }
 }

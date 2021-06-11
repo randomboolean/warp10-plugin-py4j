@@ -16,15 +16,14 @@
 
 package io.warp10.ext.py4j;
 
+import io.warp10.plugins.py4j.Py4JWarp10Plugin;
+import io.warp10.plugins.py4j.Py4JWarp10Plugin.CallbackExecutor;
 import io.warp10.script.NamedWarpScriptFunction;
 import io.warp10.script.WarpScriptException;
 import io.warp10.script.WarpScriptStack;
 import io.warp10.script.WarpScriptStackFunction;
+import io.warp10.warp.sdk.AbstractWarp10Plugin;
 import io.warp10.warp.sdk.Capabilities;
-import py4j.CallbackClient;
-
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 
 public class PYCALL extends NamedWarpScriptFunction implements WarpScriptStackFunction {
 
@@ -37,44 +36,42 @@ public class PYCALL extends NamedWarpScriptFunction implements WarpScriptStackFu
     @Override
     public Object apply(WarpScriptStack stack) throws WarpScriptException {
 
-        String host = Capabilities.get(stack, PythonCallExtension.PY4J_PYTHON_HOST);
-        if (null == Capabilities.get(stack, PythonCallExtension.PY4J_PYTHON_HOST)) {
-            throw new WarpScriptException(getName() + " requires capability " + PythonCallExtension.PY4J_PYTHON_HOST + ".");
-        }
-
-        String port = Capabilities.get(stack, PythonCallExtension.PY4J_PYTHON_PORT);
-        if (null == port) {
-            throw new WarpScriptException(getName() + " requires capability " + PythonCallExtension.PY4J_PYTHON_PORT + ".");
-        }
-
-        CallbackClient cb;
-        try {
-
-            Object cbo = stack.getAttribute(ATTRIBUTE_CLIENT_PREFIX + "@" + host + ":" + port);
-            if (null == cbo) {
-                InetAddress pyaddr = InetAddress.getByName(host);
-                int pyport = Integer.parseInt(port);
-
-                cb = new CallbackClient(pyport, pyaddr);
-            } else {
-
-                //
-                // A stack will reuse a callback client with same host:port if it has already created one
-                //
-                cb = (CallbackClient) cbo;
-            }
-
-        } catch (UnknownHostException uhe) {
-            throw new WarpScriptException(uhe.getCause());
-        }
-
         Object o = stack.pop();
         if (!(o instanceof String)) {
-            throw new WarpScriptException(getName() + " expects a STRING command.");
+            throw new WarpScriptException(getName() + " expects a STRING.");
         }
 
-        String response = cb.sendCommand((String) o);
-        stack.push(response);
+        String execs = Capabilities.get(stack, PythonCallExtension.PY4J_EXECS);
+        if (null == execs) {
+            throw new WarpScriptException(getName() + " requires capability " + PythonCallExtension.PY4J_EXECS + ".");
+        }
+
+        int n = Integer.parseInt(execs);
+
+        // TODO: handle concurrent PYCALL
+        Integer executed;
+        if (null == stack.getAttribute(PythonCallExtension.PY4J_EXECS)) {
+            executed = 0;
+        } else {
+            executed = (Integer) stack.getAttribute(PythonCallExtension.PY4J_EXECS);
+        }
+        if (executed >= n) {
+            throw new WarpScriptException(getName() + " have been called " + executed + " times, but token's capability" + PythonCallExtension.PY4J_EXECS + "is " + n +  ".");
+        }
+        stack.setAttribute(PythonCallExtension.PY4J_EXECS, executed + 1);
+
+        if (null == Py4JWarp10Plugin.getGatewayServer()) {
+            throw new WarpScriptException("GatewayServer is null. DEBUG plugins are:" + AbstractWarp10Plugin.plugins().get(0));
+        }
+        CallbackExecutor cbe = (CallbackExecutor) Py4JWarp10Plugin.getGatewayServer().getPythonServerEntryPoint(new Class[] {CallbackExecutor.class});
+
+        try {
+            String output = cbe.execute((String) o);
+            stack.push(output);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new WarpScriptException(e.getCause());
+        }
 
         return stack;
     }

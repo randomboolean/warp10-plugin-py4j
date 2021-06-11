@@ -25,11 +25,10 @@ import java.util.Map;
 public class PythonCallExtension extends WarpScriptExtension {
 
     //
-    // Required capabilities that store host and port.
+    // Required capabilities that store number of allowed callback exec per script
     //
 
-    public static final String PY4J_PYTHON_HOST = Py4JWarp10Plugin.CONFIG_PY4J_PYTHON_HOST;
-    public static final String PY4J_PYTHON_PORT = Py4JWarp10Plugin.CONFIG_PY4J_PYTHON_PORT;
+    public static final String PY4J_EXECS = "py4j.execs";
 
     //
     // Functions
