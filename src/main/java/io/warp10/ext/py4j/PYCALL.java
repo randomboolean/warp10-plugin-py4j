@@ -61,7 +61,7 @@ public class PYCALL extends NamedWarpScriptFunction implements WarpScriptStackFu
         stack.setAttribute(PythonCallExtension.PY4J_EXECS, executed + 1);
 
         if (null == Py4JWarp10Plugin.getGatewayServer()) {
-            throw new WarpScriptException("GatewayServer is null. DEBUG plugins are:" + AbstractWarp10Plugin.plugins().get(0));
+            throw new WarpScriptException("GatewayServer is null. [DEBUG] Loaded plugins are:" + AbstractWarp10Plugin.plugins().get(0));
         }
         CallbackExecutor cbe = (CallbackExecutor) Py4JWarp10Plugin.getGatewayServer().getPythonServerEntryPoint(new Class[] {CallbackExecutor.class});
 
